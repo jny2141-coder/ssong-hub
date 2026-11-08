@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base target="_blank">
+<title>쏭스터디랩 업무 통합앱</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f7f3ed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="쏭스터디랩">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  :root {
+    --ink: #3a332a; --muted: #8b8174; --line: #e5ded3;
+    --gold: #a8874f; --gold-2: #cdb07a; --gold-3: #e9d9b4; --gold-soft: #f5eddc;
+    --greige: #d8d0c3; --greige-2: #c4b9a8; --ivory: #fbf8f3; --bg: #f2ede5;
+    --char: #4a4338;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { padding-top: env(safe-area-inset-top); }
+  .logo img, .glogo img { width: 82%; height: auto; display: block; }
+  body { background: linear-gradient(180deg, #f7f3ed 0%, #ece5da 100%); color: var(--ink); min-height: 100vh;
+    font-family: Pretendard, "Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", sans-serif; letter-spacing: -0.01em; }
+  button { font: inherit; cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 12px 28px; }
+  .serif { font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
+
+  /* ---------- HUD ---------- */
+  .hud { display: flex; align-items: center; justify-content: space-between; padding: 18px 6px 12px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .logo { width: 46px; height: 46px; border-radius: 14px; background: var(--ivory); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(120,100,70,.14); }
+  .logo svg { width: 36px; height: 36px; }
+  .brand .t2 { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
+  .brand .t2 span { background: linear-gradient(135deg, #b8975a, #8a6d3b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand .t1 { font-size: 11px; color: var(--gold); font-style: italic; margin-top: 1px; }
+  .clockbox { text-align: right; }
+  .clockbox .time { font-size: 25px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink); }
+  .clockbox .date { font-size: 11.5px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+  .quest { display: flex; align-items: center; gap: 9px; background: var(--ivory); border: 1px solid var(--line); border-radius: 14px; padding: 10px 13px; font-size: 13px; color: #5b5246; margin: 0 2px 12px; box-shadow: 0 2px 8px rgba(120,100,70,.06); }
+  .quest b { color: var(--gold); }
+  .quest .dot { width: 8px; height: 8px; border-radius: 50%; background: #7fb48b; box-shadow: 0 0 0 4px rgba(127,180,139,.2); flex: none; animation: blink 2s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+
+  /* ---------- 지도 ---------- */
+  .stage { position: relative; border-radius: 22px; overflow: hidden; background: #cfc6b8; box-shadow: 0 22px 50px rgba(110,90,60,.22), 0 0 0 6px var(--ivory), 0 0 0 7px var(--line); margin: 7px; }
+  .stage svg.map { display: block; width: 100%; height: auto; }
+  .night-veil { position: absolute; inset: 0; background: radial-gradient(70% 60% at 50% 45%, rgba(40,36,60,.38), rgba(18,16,30,.66)); pointer-events: none; display: none; }
+  .night .night-veil { display: block; }
+  .lights { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; mix-blend-mode: screen; }
+  .night .lights { display: block; }
+
+  .spot { position: absolute; transform: translate(-50%, -50%); border: none; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; }
+  .spot .pin { position: relative; width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 19px; box-shadow: 0 8px 18px rgba(70,55,35,.35), inset 0 -3px 0 rgba(0,0,0,.14); border: 2px solid #fff; transition: transform .15s; animation: float 2.6s ease-in-out infinite; }
+  .spot:nth-of-type(2) .pin { animation-delay: .4s; } .spot:nth-of-type(3) .pin { animation-delay: .8s; } .spot:nth-of-type(4) .pin { animation-delay: 1.2s; }
+  .spot .pin::after { content: ""; position: absolute; inset: -7px; border-radius: 17px; border: 2px solid currentColor; opacity: 0; animation: ping 2.6s ease-out infinite; }
+  .spot .tag { font-size: 11px; font-weight: 800; color: #fff; background: rgba(58,51,42,.9); padding: 3px 8px; border-radius: 8px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+  .spot:active .pin { transform: scale(.9); }
+  .p-solo { background: linear-gradient(145deg, #6b6052, var(--char)); color: #e9d9b4; }
+  .p-consult { background: linear-gradient(145deg, var(--gold-2), var(--gold)); color: #ffe9b8; }
+  .p-schedule { background: linear-gradient(145deg, #a3b391, #7d8f6c); color: #e3f2d3; }
+  .p-sheets { background: linear-gradient(145deg, #b9a78c, #957f62); color: #f6e8cf; }
+  @keyframes float { 0%,100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+  @keyframes ping { 0% { opacity: .55; transform: scale(.9); } 70%,100% { opacity: 0; transform: scale(1.35); } }
+
+  .legend { display: flex; gap: 14px; justify-content: center; font-size: 11.5px; color: var(--muted); margin: 12px 0 0; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  .dock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+  .dock button { background: var(--ivory); border: 1px solid var(--line); border-radius: 16px; padding: 12px 4px 10px; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; box-shadow: 0 3px 10px rgba(120,100,70,.07); }
+  .dock button span.ic { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .dock button:active { transform: scale(.96); }
+
+  details.tip { margin-top: 16px; background: var(--ivory); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; color: #5b5246; }
+  details.tip summary { list-style: none; font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; cursor: pointer; }
+  details.tip summary::-webkit-details-marker { display: none; }
+  details.tip summary::after { content: "＋"; color: var(--gold); }
+  details.tip[open] summary::after { content: "－"; }
+  details.tip ol { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; }
+  footer { text-align: center; font-size: 11.5px; color: var(--gold); margin-top: 20px; font-style: italic; }
+
+  .veil { position: fixed; inset: 0; background: rgba(40,32,22,.45); display: none; z-index: 8; }
+  .veil.show { display: block; }
+  .card { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 560px; transform: translate(-50%, 105%); transition: transform .28s cubic-bezier(.2,.9,.3,1.1); z-index: 9;
+    background: var(--ivory); color: var(--ink); border-radius: 24px 24px 0 0; padding: 22px 20px calc(22px + env(safe-area-inset-bottom)); box-shadow: 0 -20px 50px rgba(60,45,25,.25); }
+  .card.show { transform: translate(-50%, 0); }
+  .card .grab { width: 40px; height: 4px; border-radius: 2px; background: #ddd4c6; margin: -8px auto 16px; }
+  .card .top { display: flex; gap: 14px; align-items: center; }
+  .card .big { width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex: none; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+  .card .place { font-size: 12px; font-weight: 800; color: var(--gold); letter-spacing: .04em; }
+  .card h3 { margin: 2px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+  .card .badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; background: var(--gold-soft); color: #7a6332; margin-top: 6px; }
+  .card p.desc { font-size: 14px; color: #5b5246; margin: 14px 0 0; line-height: 1.55; }
+  .card .acts { display: grid; gap: 8px; margin-top: 18px; }
+  .card .acts.two { grid-template-columns: 1fr 1fr; }
+  .card .btn { display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 14px; padding: 15px 10px; font-weight: 800; font-size: 15px; border: none; }
+  .card .btn.main { background: var(--char); color: #fff; grid-column: 1 / -1; }
+  .card .btn.sub { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+  .card .btn.green { background: linear-gradient(135deg, #b8975a, #8a6d3b); color: #fff; }
+  .card .sheetlink { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; }
+  .card .sheetlink b { display: block; font-size: 15px; } .card .sheetlink small { color: var(--muted); font-size: 12.5px; }
+  .card .sheetlink .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--gold-soft); display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
+  .card .sheetlink .arr { margin-left: auto; color: var(--gold); font-weight: 800; }
+  .card .hint { font-size: 12px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+  .gate { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: rgba(242,237,229,.72); backdrop-filter: blur(10px) saturate(1.1); -webkit-backdrop-filter: blur(10px) saturate(1.1); transition: opacity .35s; }
+  .gate.hide { opacity: 0; pointer-events: none; }
+  .gbox { width: 100%; max-width: 340px; background: var(--ivory); border: 1px solid var(--line); border-radius: 24px; padding: 30px 24px 24px; text-align: center; box-shadow: 0 24px 60px rgba(110,90,60,.25); }
+  .gbox .glogo { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 20px; background: #fff; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(120,100,70,.14); }
+  .gbox .glogo svg { width: 48px; height: 48px; }
+  .gbox h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+  .gbox h2 span { background: linear-gradient(135deg, #b8975a, #8a6d3b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .gbox .sub { font-size: 11.5px; color: var(--gold); font-style: italic; margin: 3px 0 20px; }
+  .gbox input[type=password] { width: 100%; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; font: inherit; font-size: 16px; text-align: center; letter-spacing: .3em; background: #fff; outline: none; color: var(--ink); }
+  .gbox input[type=password]::placeholder { letter-spacing: 0; color: #b3a99a; }
+  .gbox input[type=password]:focus { border-color: var(--gold-2); box-shadow: 0 0 0 4px rgba(205,176,122,.2); }
+  .gbox input.shake { animation: shake .35s; border-color: #d98b7c; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .gbox label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin: 12px 0 0; cursor: pointer; }
+  .gbox label input { accent-color: #a8874f; width: 16px; height: 16px; }
+  .gbox button { width: 100%; margin-top: 16px; border: none; border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #b8975a, #8a6d3b); box-shadow: 0 8px 18px rgba(138,109,59,.3); }
+  .gbox button:disabled { opacity: .6; }
+  .gbox .err { font-size: 12.5px; color: #b5584a; margin-top: 10px; min-height: 18px; }
+  .lockbtn { border: 1px solid var(--line); background: var(--ivory); border-radius: 10px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; color: var(--muted); margin-top: 6px; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; background: #3a332a; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 13.5px; font-weight: 600; transition: .2s; pointer-events: none; white-space: nowrap; z-index: 20; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hidden-input { position: fixed; left: -9999px; top: 0; }
+
+  .bob { animation: bob 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes bob { 50% { transform: translateY(-2.5px); } }
+  .blinkeye { animation: eye 4s infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes eye { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+  .monitor-glow { animation: glow 3s ease-in-out infinite; }
+  @keyframes glow { 50% { opacity: .55; } }
+
+/* ---------- SSong Study Lab · refined visual system ---------- */
+:root {
+  --ink:#393329; --muted:#8e8375; --line:#e8e0d4;
+  --gold:#ad8b50; --gold-2:#d2b77f; --gold-3:#ead9b4; --gold-soft:#f6efdf;
+  --greige:#d9d0c3; --greige-2:#c7bcac; --ivory:#fffdf9; --bg:#f3eee6; --char:#4b4338;
+}
+html { min-height:100%; background:#f3eee6; }
+body {
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(255,255,255,.96), transparent 48%),
+    linear-gradient(180deg,#f8f5ef 0%,#eee7dc 100%);
+  color:var(--ink);
+}
+.wrap { max-width:820px; padding:0 16px 34px; }
+.hud { padding:22px 7px 15px; }
+.logo { width:49px;height:49px;border-radius:16px;background:linear-gradient(145deg,#fff,#f5efe4);box-shadow:0 7px 20px rgba(102,81,48,.11); }
+.brand .t2 { font-size:clamp(16px,4.2vw,20px); }
+.brand .t1 { letter-spacing:.035em; }
+.clockbox .time { font-size:27px; letter-spacing:-.045em; }
+.quest { border-radius:15px; padding:11px 14px; background:rgba(255,253,249,.9); box-shadow:0 5px 18px rgba(99,78,49,.055); }
+.stage {
+  border-radius:20px; margin:10px 7px 0;
+  background:#d9d0c2;
+  box-shadow:0 18px 42px rgba(91,72,46,.18),0 0 0 5px rgba(255,253,249,.96),0 0 0 6px #e6ded2;
+}
+.stage:after { content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.55);border-radius:inherit;pointer-events:none;z-index:1; }
+.stage svg.map { filter:saturate(.82) contrast(1.015); }
+.spot { z-index:3; gap:4px; }
+.spot .pin { width:39px;height:39px;border-radius:14px;font-size:18px;border:2px solid rgba(255,255,255,.96);box-shadow:0 7px 15px rgba(64,49,30,.25),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.13); }
+.spot .tag { font-size:10.5px;letter-spacing:-.025em;padding:4px 8px;background:rgba(55,48,39,.91);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px); }
+.legend { gap:12px 16px;margin:13px 0 0;font-size:11px; }
+.dock { gap:9px;margin-top:18px; }
+.dock button { min-height:83px;border-radius:17px;padding:12px 3px 11px;background:linear-gradient(155deg,#fffefa,#f8f4ed);border-color:#e7dfd2;box-shadow:0 5px 14px rgba(104,82,49,.065);font-size:11.5px; }
+.dock button span.ic { width:37px;height:37px;border-radius:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25); }
+details.tip { margin:17px 2px 0;background:rgba(255,253,249,.88); }
+footer { margin-top:22px;letter-spacing:.06em; }
+.card { max-width:580px;padding:22px 22px calc(24px + env(safe-area-inset-bottom));border:1px solid rgba(213,199,176,.7);background:linear-gradient(160deg,#fffefa,#f8f3e9); }
+.card .grab { background:#d8cbb6; }
+.card .big { border-radius:19px; }
+.card .btn { border-radius:14px; }
+.card .btn.main { background:linear-gradient(135deg,#51483b,#373128);box-shadow:0 7px 15px rgba(57,47,34,.14); }
+.card .btn.green { background:linear-gradient(135deg,#c5a66b,#96743f); }
+.card .sheetlink { background:rgba(255,255,255,.8); }
+.gate { background:rgba(236,229,216,.76); }
+.gbox { border-radius:26px;padding:32px 25px 25px;background:linear-gradient(155deg,#fffefa,#f8f3e9);border-color:#e6ddcf;box-shadow:0 26px 70px rgba(81,64,40,.2); }
+.gbox .glogo { border-radius:21px; }
+.gbox button { background:linear-gradient(135deg,#c4a56b,#92713f); }
+.toast { border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 24px rgba(40,32,22,.22); }
+.night .stage { box-shadow:0 18px 45px rgba(24,20,31,.28),0 0 0 5px rgba(255,253,249,.92),0 0 0 6px #d7cdbd; }
+.night .spot .tag { background:rgba(34,31,35,.94); }
+@media (max-width:480px) {
+  .wrap { padding:0 12px 26px; }
+  .hud { padding:17px 2px 12px;gap:8px; }
+  .brand { gap:8px;min-width:0; }
+  .logo { width:42px;height:42px;border-radius:13px;flex:none; }
+  .logo svg { width:32px;height:32px; }
+  .brand .t2 { font-size:15.5px;white-space:nowrap; }
+  .brand .t1 { font-size:9.5px; }
+  .clockbox .time { font-size:23px; }
+  .clockbox .date { font-size:10px; }
+  .lockbtn { font-size:10px;padding:5px 8px; }
+  .quest { margin:0 0 11px;font-size:12px;padding:10px 11px; }
+  .stage { margin:8px 4px 0;border-radius:15px; }
+  .spot .pin { width:34px;height:34px;border-radius:12px;font-size:16px; }
+  .spot .tag { font-size:9px;padding:3px 6px; }
+  .legend { font-size:9.5px;gap:7px 10px; }
+  .dock { gap:6px;margin-top:15px; }
+  .dock button { min-height:76px;border-radius:14px;font-size:10px; }
+  .dock button span.ic { width:33px;height:33px;border-radius:11px;font-size:16px; }
+}
+@media (min-width:650px) {
+  .wrap { padding-left:22px;padding-right:22px; }
+  .stage { margin-left:10px;margin-right:10px; }
+  .dock button { min-height:91px;font-size:13px; }
+}
+
+
+/* ---------- 좌석 명단 ---------- */
+.rhit { fill: transparent; cursor: pointer; }
+.rhit:hover + .rmark, .rmark.flash { stroke: #a8874f; stroke-width: 2.4; }
+.roster { margin: 18px 2px 0; background: rgba(255,253,249,.92); border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px 8px; box-shadow: 0 5px 18px rgba(99,78,49,.055); }
+.roster .rhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.roster h4 { margin: 0; font-size: 14.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+.roster h4::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--gold); }
+.roster h4 small { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.roster .tg { border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: 5px 9px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.roster .tg.on { background: var(--gold-soft); color: #7a6332; border-color: var(--gold-3); }
+.roster input { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 14px; background: #fff; outline: none; color: var(--ink); }
+.roster input:focus { border-color: var(--gold-2); }
+.rlist { margin-top: 8px; max-height: 360px; overflow: auto; }
+.rrow { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid #efe8dc; cursor: pointer; }
+.rrow:first-child { border-top: none; }
+.rrow .no { width: 34px; height: 30px; border-radius: 9px; background: linear-gradient(145deg,#d2b77f,#a8874f); color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.rrow .no.closed { background: linear-gradient(145deg,#b9ae9c,#8e8270); }
+.rrow .who { flex: 1; min-width: 0; }
+.rrow .who b { font-size: 14.5px; } .rrow .who small { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rrow .calls { display: flex; gap: 5px; flex: none; }
+.rrow .calls a { border: 1.5px solid var(--line); background: #fff; border-radius: 9px; padding: 6px 8px; font-size: 11.5px; font-weight: 800; color: var(--ink); }
+.rrow .calls a.pg { background: var(--char); border-color: var(--char); color: #fff; }
+.rrow .calls a.off { opacity: .35; pointer-events: none; }
+.rempty { text-align: center; color: var(--muted); font-size: 12.5px; padding: 18px 0 14px; line-height: 1.6; }
+.card .contact { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.85); }
+.card .contact .lab { flex: 1; min-width: 0; }
+.card .contact small { display: block; font-size: 11.5px; color: var(--gold); font-weight: 800; }
+.card .contact b { font-size: 16px; letter-spacing: .01em; }
+.card .contact .none { font-size: 13px; color: var(--muted); font-weight: 600; }
+.card .contact a { border-radius: 11px; padding: 9px 12px; font-size: 13px; font-weight: 800; flex: none; }
+.card .contact a.call { background: var(--char); color: #fff; } .card .contact a.text { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+.card .memo { font-size: 13px; color: #5b5246; background: var(--gold-soft); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+@media (max-width:480px) { .rrow .calls a { padding: 6px 7px; font-size: 11px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="brand">
+      <div class="logo"><img src="logo-mark.png" alt="쏭스터디랩 로고"></div>
+      <div><div class="t2"><span>쏭스터디랩</span> 업무 통합앱</div><div class="t1 serif">Fly High with SSong's Study</div></div>
+    </div>
+    <div class="clockbox"><div class="time" id="time"></div><div class="date" id="date"></div><button class="lockbtn" id="lock" type="button">🔒 잠그기</button></div>
+  </div>
+  <div class="quest"><span class="dot"></span><span id="hello"></span></div>
+
+  <div class="stage" id="stage">
+    <svg class="map" id="map" viewBox="0 0 800 700" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="night-veil"></div>
+    <svg class="lights" id="lights" viewBox="0 0 800 700" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="spots"></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:#fbf8f3;border:2px solid #cdb07a"></i>개방형 좌석</span>
+    <span><i style="background:#fbf8f3;border:2px solid #a89c89"></i>몰입형 좌석 (칸막이)</span>
+    <span><i style="background:linear-gradient(135deg,#cdb07a,#a8874f)"></i>누르면 열리는 장소</span>
+  </div>
+
+  <div class="dock" id="dock"></div>
+
+  <section class="roster" id="roster">
+    <div class="rhead"><h4>좌석 학생 명단 <small id="rcount"></small></h4><button class="tg on" id="rnames" type="button">맵에 이름 표시</button></div>
+    <input type="search" id="rq" placeholder="이름 · 좌석 번호 · 전화번호 검색" autocomplete="off">
+    <div class="rlist" id="rlist"></div>
+  </section>
+
+  <details class="tip">
+    <summary>업무폰에 앱으로 설치하기</summary>
+    <ol>
+      <li>갤럭시: 크롬으로 이 주소 열기 → 오른쪽 위 ⋮ → <b>앱 설치</b> (또는 홈 화면에 추가 → 설치)</li>
+      <li>설치 후에는 앱 서랍의 <b>쏭스터디랩</b> 아이콘으로 열면 돼요.</li>
+    </ol>
+  </details>
+  <footer class="serif">Fly High with SSong's Study</footer>
+</div>
+
+<div class="gate" id="gate"><form class="gbox" id="gform" autocomplete="off">
+  <div class="glogo" id="glogo"></div>
+  <h2><span>쏭스터디랩</span> 업무 통합앱</h2>
+  <div class="sub serif">Fly High with SSong's Study</div>
+  <input type="password" id="gpin" placeholder="관리자 비밀번호" inputmode="text" autocomplete="current-password">
+  <label><input type="checkbox" id="gkeep" checked> 이 기기에서 비밀번호 기억하기</label>
+  <button type="submit" id="gbtn">들어가기</button>
+  <div class="err" id="gerr"></div>
+</form></div>
+<div class="veil" id="veil"></div>
+<div class="card" id="card"></div>
+<div class="toast" id="toast"></div>
+<textarea class="hidden-input" id="clip" readonly></textarea>
+
+<script>
+let LINKS = { apps: [], sheets: [] };
+const $ = id => document.getElementById(id);
+const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const app = k => LINKS.apps.find(a => a.key === k) || {};
+
+/* =========================================================
+ *  1) 공간 그리기 (실제 배치도 좌표 기준, 800 × 700)
+ * ========================================================= */
+const OPEN = [1,2,3,4,5,6,7,8,9,10,11,12,31,32,33,34,35,36,37,38,39,40];
+// [좌석번호, 의자 x, 의자 y, 책상 방향(up/down/left/right)]
+const SEATS = [];
+[[1,713],[2,642],[3,572],[4,500],[5,430],[6,357]].forEach(([n,x]) => SEATS.push([n,x,118,'up']));
+[[7,713],[8,642],[9,572],[10,500],[11,430],[12,357]].forEach(([n,x]) => SEATS.push([n,x,206,'up']));
+[[31,713],[32,642],[33,500],[34,430]].forEach(([n,x]) => SEATS.push([n,x,294,'up']));
+[[35,713],[36,642],[37,572],[38,500],[39,430],[40,357]].forEach(([n,x]) => SEATS.push([n,x,382,'up']));
+[41,42,43,44,45,46,47].forEach((n,i) => SEATS.push([n,330+i*54,452,'down']));
+[13,14,15,16,17,18,19].forEach((n,i) => SEATS.push([n,268,42+i*50,'left']));
+[26,25,24,23,22,21,20].forEach((n,i) => SEATS.push([n,176,42+i*50,'right']));
+SEATS.push([27,92,104,'left'],[28,92,150,'left'],[29,40,262,'down'],[30,84,262,'down']);
+[[48,548],[49,598],[50,648]].forEach(([n,y]) => SEATS.push([n,668,y,'left']));
+[[53,548],[52,598],[51,648]].forEach(([n,y]) => SEATS.push([n,736,y,'right']));
+
+const LAMPS = [];
+const SEATBOX = {};
+const C = { floor: '#ebe6de', tileLine: '#ddd6cb', wall: '#b9ae9d', wallDark: '#a39885', desk: '#fbf8f3', deskEdge: '#d9d0c2',
+  shelf: '#d8cfc1', shelfLine: '#bfb4a2', panel: '#d3cabb', panelEdge: '#b3a893', seat: '#bba487', mesh: '#a9a9a9', frame: '#f4f1ec', gold: '#a8874f' };
+
+// 위에서 본 의자: 흰 프레임 + 회색 메시 등받이 + 베이지 좌석
+function chair(cx, cy, dir) {
+  const back = { up: [0, 8], down: [0, -8], left: [8, 0], right: [-8, 0] }[dir];
+  const vertical = dir === 'up' || dir === 'down';
+  let g = `<g class="chair-unit" filter="url(#softShadow)">`;
+  g += `<ellipse cx="${cx+1}" cy="${cy+4}" rx="12" ry="10" fill="#786b59" opacity=".15"/>`;
+  // five-point caster base and soft white frame
+  g += `<path d="M${cx-7} ${cy+1} L${cx-11} ${cy+8} M${cx+7} ${cy+1} L${cx+11} ${cy+8} M${cx} ${cy+4} L${cx} ${cy+12}" stroke="#c9c5bd" stroke-width="2" stroke-linecap="round"/>`;
+  g += `<circle cx="${cx-11}" cy="${cy+8}" r="2" fill="#b8b5af"/><circle cx="${cx+11}" cy="${cy+8}" r="2" fill="#b8b5af"/><circle cx="${cx}" cy="${cy+12}" r="2" fill="#b8b5af"/>`;
+  g += `<rect x="${cx-10}" y="${cy-8}" width="20" height="17" rx="6" fill="#f8f6f1" stroke="#c9c4ba" stroke-width="1"/>`;
+  g += `<rect x="${cx-7.5}" y="${cy-6}" width="15" height="12" rx="4.5" fill="url(#chairSeat)" stroke="#b7a78f" stroke-width=".65"/>`;
+  // mesh backrest, rotated to face the desk
+  if (vertical) {
+    const by = cy + back[1] - 3;
+    g += `<rect x="${cx-9}" y="${by-5}" width="18" height="8" rx="3.5" fill="url(#meshBack)" stroke="#a9a79f" stroke-width=".8"/>`;
+    for (let i=0;i<4;i++) g += `<path d="M${cx-6+i*4} ${by-4}v6" stroke="#fff" stroke-opacity=".48" stroke-width=".55"/>`;
+    g += `<path d="M${cx-11} ${cy-2}q-4 2-3 6 M${cx+11} ${cy-2}q4 2 3 6" fill="none" stroke="#e9e6df" stroke-width="2" stroke-linecap="round"/>`;
+  } else {
+    const bx = cx + back[0] - 3;
+    g += `<rect x="${bx-5}" y="${cy-9}" width="8" height="18" rx="3.5" fill="url(#meshBack)" stroke="#a9a79f" stroke-width=".8"/>`;
+    for (let i=0;i<4;i++) g += `<path d="M${bx-4} ${cy-6+i*4}h6" stroke="#fff" stroke-opacity=".48" stroke-width=".55"/>`;
+    g += `<path d="M${cx-2} ${cy-11}q2-4 6-3 M${cx-2} ${cy+11}q2 4 6 3" fill="none" stroke="#e9e6df" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  return g + `</g>`;
+}
+
+function seatSVG([n, cx, cy, dir]) {
+  const open = OPEN.includes(n);
+  const W = 40, D = 22;
+  let dx, dy, dw, dh;
+  if (dir === 'up')    { dw = W; dh = D; dx = cx - W/2; dy = cy - 12 - D; }
+  if (dir === 'down')  { dw = W; dh = D; dx = cx - W/2; dy = cy + 12; }
+  if (dir === 'left')  { dw = D; dh = W; dx = cx - 12 - D; dy = cy - W/2; }
+  if (dir === 'right') { dw = D; dh = W; dx = cx + 12; dy = cy - W/2; }
+  SEATBOX[n] = { dx, dy, dw, dh, cx, cy, dir };
+  let g = '<g class="seat">';
+  // desk body with softly rounded laminated edge
+  g += `<rect x="${dx+1}" y="${dy+3}" width="${dw}" height="${dh}" rx="3.5" fill="#827665" opacity=".13"/>`;
+  g += `<rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="3.2" fill="url(#deskTop)" stroke="#cfc5b6" stroke-width="1.15"/>`;
+  g += `<path d="M${dx+4} ${dy+3}h${dw-8}" stroke="#fff" stroke-opacity=".76" stroke-width="1"/>`;
+  if (open) {
+    if (dir === 'up' || dir === 'down') {
+      const sy = dir === 'up' ? dy : dy + dh - 7;
+      g += `<rect x="${dx+1}" y="${sy}" width="${dw-2}" height="7" rx="1.5" fill="url(#woodShelf)" stroke="#b9ad9b" stroke-width=".65"/>`;
+      for (let i = 1; i < 4; i++) g += `<line x1="${dx + dw * i / 4}" y1="${sy+1}" x2="${dx + dw * i / 4}" y2="${sy + 6}" stroke="#b5a995" stroke-width=".7"/>`;
+    } else {
+      const sx = dir === 'left' ? dx : dx + dw - 7;
+      g += `<rect x="${sx}" y="${dy+1}" width="7" height="${dh-2}" rx="1.5" fill="url(#woodShelf)" stroke="#b9ad9b" stroke-width=".65"/>`;
+      for (let i = 1; i < 4; i++) g += `<line x1="${sx+1}" y1="${dy + dh * i / 4}" x2="${sx + 6}" y2="${dy + dh * i / 4}" stroke="#b5a995" stroke-width=".7"/>`;
+    }
+  } else {
+    const P = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="url(#partition)" stroke="#b8ad9c" stroke-width=".7"/>`;
+    if (dir === 'up')    g += P(dx-3.5,dy-3.5,4,dh+22)+P(dx+dw-.5,dy-3.5,4,dh+22)+P(dx-3.5,dy-3.5,dw+7,4);
+    if (dir === 'down')  g += P(dx-3.5,dy-18.5,4,dh+22)+P(dx+dw-.5,dy-18.5,4,dh+22)+P(dx-3.5,dy+dh-.5,dw+7,4);
+    if (dir === 'left')  g += P(dx-3.5,dy-3.5,dw+22,4)+P(dx-3.5,dy+dh-.5,dw+22,4)+P(dx-3.5,dy-3.5,4,dh+7);
+    if (dir === 'right') g += P(dx-18.5,dy-3.5,dw+22,4)+P(dx-18.5,dy+dh-.5,dw+22,4)+P(dx+dw-.5,dy-3.5,4,dh+7);
+  }
+  // a tiny notebook and pencil hint at a lived-in, playable study space
+  const nx = dx + (dir === 'left' ? 10 : dir === 'right' ? 4 : dw-12);
+  const ny = dy + (dir === 'down' ? 3 : 4);
+  g += `<rect x="${nx}" y="${ny}" width="7" height="5" rx="1" fill="#e8dfcf" stroke="#c9bda9" stroke-width=".45"/>`;
+  g += `<line x1="${nx+1}" y1="${ny+2}" x2="${nx+6}" y2="${ny+2}" stroke="#b9aa91" stroke-width=".45"/>`;
+  LAMPS.push([dx + dw / 2, dy + dh / 2]);
+  g += chair(cx, cy, dir);
+  const tx = dx + dw / 2 + (dir === 'left' ? 3 : dir === 'right' ? -3 : 0), ty = dy + dh / 2 + 4 + (dir === 'up' ? 3 : dir === 'down' ? -3 : 0);
+  g += `<text x="${tx}" y="${ty}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${open ? '#987746' : '#716756'}" font-family="Pretendard, sans-serif">${n}</text>`;
+  return g + '</g>';
+}
+
+function drawMap() {
+  const defs = `<defs>
+    <pattern id="tile" width="30" height="30" patternUnits="userSpaceOnUse"><rect width="30" height="30" fill="${C.floor}"/><path d="M30 0H0V30" fill="none" stroke="${C.tileLine}" stroke-width="1"/></pattern>
+    <pattern id="stair" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#8f8574"/><path d="M0 0H14" stroke="#a89d8a" stroke-width="3"/></pattern>
+    <pattern id="blind" width="6" height="4" patternUnits="userSpaceOnUse"><rect width="6" height="4" fill="#f2efe9"/><path d="M0 3.5H6" stroke="#d6cfc4" stroke-width="1"/></pattern>
+    <linearGradient id="glass" x1="0" x2="1"><stop offset="0" stop-color="#dbe9ee" stop-opacity=".75"/><stop offset="1" stop-color="#f3f8fa" stop-opacity=".75"/></linearGradient>
+    <linearGradient id="goldG" x1="0" x2="1"><stop offset="0" stop-color="#d8bb7c"/><stop offset="1" stop-color="#8a6d3b"/></linearGradient>
+    <linearGradient id="deskTop" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fffefa"/><stop offset=".55" stop-color="#f7f3ec"/><stop offset="1" stop-color="#e9e1d5"/></linearGradient>
+    <linearGradient id="woodShelf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e5ddcf"/><stop offset="1" stop-color="#c9bda9"/></linearGradient>
+    <linearGradient id="partition" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2dbd0"/><stop offset=".55" stop-color="#d1c8ba"/><stop offset="1" stop-color="#bdb19f"/></linearGradient>
+    <linearGradient id="chairSeat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4c5ae"/><stop offset="1" stop-color="#aa987e"/></linearGradient>
+    <linearGradient id="meshBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7d8d4"/><stop offset="1" stop-color="#9fa19d"/></linearGradient>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="190%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.7"/><feOffset dy="1.8"/><feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+  let s = defs;
+  s += `<rect width="800" height="700" fill="#cfc6b8"/>`;
+  s += `<rect x="12" y="0" width="784" height="696" fill="url(#tile)"/>`;
+  s += `<rect x="120" y="45" width="670" height="450" rx="5" fill="#fff" opacity=".08"/>`;
+  // subtle circulation path and soft architectural shadows
+  s += `<path d="M118 392H286V500H610V490" fill="none" stroke="#c9bfae" stroke-width="54" opacity=".12" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // 계단
+  s += `<rect x="12" y="330" width="98" height="250" fill="url(#stair)"/><text x="61" y="460" text-anchor="middle" font-size="12" font-weight="800" fill="#f4efe6" font-family="Pretendard">계단</text>`;
+  // 벽
+  const W = (x1, y1, x2, y2, w = 7) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${C.wall}" stroke-width="${w}" stroke-linecap="round"/>`;
+  s += W(12,0,796,0,10) + W(796,0,796,696,10) + W(12,696,796,696,10) + W(12,0,12,696,10);
+  s += W(115,60,115,330) + W(12,60,115,60) + W(12,320,115,320) + W(115,0,115,30);
+  s += W(300,0,300,40) + W(300,40,796,40,4);
+  s += W(110,410,262,410) + W(110,330,110,600);
+  s += W(262,410,262,512) + W(262,512,495,512,5) + W(262,512,262,696);
+  s += W(612,506,612,696) + W(612,506,796,506,5);
+  // 천장 라인 조명 (사진 속 LED 라인)
+  [[320, 62, 780, 62], [320, 248, 780, 248], [320, 432, 780, 432]].forEach(([x1, y1, x2, y2]) =>
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fffaf0" stroke-width="3" stroke-linecap="round" opacity=".9"/>`);
+  // 기둥 + 문구 플레이트
+  [[314, 258], [537, 258]].forEach(([x, y]) => {
+    s += `<rect x="${x + 2}" y="${y + 3}" width="24" height="24" rx="3" fill="rgba(80,65,45,.18)"/><rect x="${x}" y="${y}" width="24" height="24" rx="3" fill="#e4ddd2" stroke="${C.wallDark}"/>`;
+    s += `<rect x="${x + 9}" y="${y + 3}" width="6" height="18" rx="1" fill="url(#goldG)"/>`;
+  });
+  // 스탠딩 테이블
+  s += `<rect x="330" y="9" width="456" height="17" rx="3" fill="${C.desk}" stroke="${C.deskEdge}"/><text x="558" y="21.5" text-anchor="middle" font-size="10.5" font-weight="800" fill="#9a8a6f" font-family="Pretendard">스탠딩 테이블</text>`;
+  s += `<rect x="20" y="182" width="88" height="14" rx="3" fill="${C.desk}" stroke="${C.deskEdge}"/><text x="64" y="212" text-anchor="middle" font-size="9.5" font-weight="800" fill="#9a8a6f" font-family="Pretendard">스탠딩</text>`;
+
+  // ----- 라운지 (카페테리아) -----
+  s += `<rect x="266" y="516" width="226" height="176" fill="#eee8df"/>`;
+  s += `<rect x="276" y="548" width="204" height="116" rx="5" fill="#e4ddd2" opacity=".38" stroke="#d1c6b6" stroke-width="1"/>`;
+  s += `<rect x="268" y="518" width="190" height="24" rx="2" fill="#d4cabb" stroke="#bdb19e"/>`;               // 수납장
+  for (let x = 268; x < 458; x += 24) s += `<line x1="${x}" y1="518" x2="${x}" y2="542" stroke="#bdb19e" stroke-width=".8"/>`;
+  s += `<rect x="300" y="522" width="30" height="14" rx="3" fill="#c3cbd1"/><circle cx="315" cy="529" r="3" fill="#9aa5ad"/>`; // 싱크
+  s += `<rect x="460" y="518" width="30" height="34" rx="2" fill="#eef4f6" stroke="#bdb19e"/><line x1="463" y1="526" x2="487" y2="526" stroke="#cfdbe0"/><line x1="463" y1="534" x2="487" y2="534" stroke="#cfdbe0"/><line x1="463" y1="542" x2="487" y2="542" stroke="#cfdbe0"/>`; // 유리 냉장고
+  s += `<rect x="312" y="586" width="128" height="22" rx="3" fill="#fdfcf9" stroke="#d9d0c2"/>`;                   // 긴 흰 테이블
+  [330, 356, 382, 408].forEach(x => { s += chair(x, 575, 'down'); s += chair(x + 6, 619, 'up'); });
+  s += `<rect x="268" y="672" width="222" height="12" fill="${C.desk}" stroke="${C.deskEdge}"/><rect x="268" y="684" width="222" height="7" fill="url(#blind)"/>`; // 창가 바 + 블라인드
+  s += `<text x="376" y="660" text-anchor="middle" font-size="12" font-weight="800" fill="#9a8a6f" font-family="Pretendard">라운지</text>`;
+
+  // ----- 스터디룸 -----
+  s += `<rect x="495" y="512" width="117" height="184" fill="url(#glass)"/>`;
+  s += `<rect x="502" y="520" width="102" height="168" rx="3" fill="#fff" opacity=".18" stroke="#c7c0b5" stroke-width="1"/>` + W(495,512,495,696,4);
+  s += `<rect x="586" y="530" width="22" height="70" rx="2" fill="#d4cabb" stroke="#bdb19e"/>`;
+  s += `<rect x="522" y="590" width="58" height="46" rx="3" fill="#fdfcf9" stroke="#d9d0c2"/>`;
+  s += chair(536, 579, 'down') + chair(566, 579, 'down') + chair(536, 647, 'up') + chair(566, 647, 'up');
+
+  // ----- 48~53 방 -----
+  s += `<rect x="614" y="508" width="180" height="186" fill="#efe9e0" opacity=".6"/>`;
+  // 화분
+  [[778, 486], [30, 40], [610, 688]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="10" fill="#7c9a74"/><circle cx="${x - 4}" cy="${y - 3}" r="5" fill="#9cba92"/>`);
+  // 좌석
+  SEATS.forEach(seat => s += seatSVG(seat));
+
+  // ----- 안내 데스크 -----
+  s += `<rect x="150" y="413" width="96" height="8" rx="2" fill="#e8e2d8" stroke="${C.wallDark}" stroke-width=".8"/>`;      // 로고 사인 벽
+  s += `<text x="198" y="420" text-anchor="middle" font-size="7" font-weight="800" fill="#a8874f" font-family="Pretendard">쏭스터디랩</text>`;
+  s += `<rect x="126" y="452" width="128" height="32" rx="4" fill="#fdfcf9" stroke="#d3c9b9" stroke-width="1.5"/>`;   // 흰 카운터
+  s += `<rect x="126" y="452" width="26" height="80" rx="4" fill="#fdfcf9" stroke="#d3c9b9" stroke-width="1.5"/>`;
+  s += `<rect x="128" y="478" width="124" height="5" fill="#e6dfd3"/>`;
+  s += `<rect x="168" y="456" width="34" height="20" rx="3" fill="#3f3a33"/><rect x="171" y="459" width="28" height="14" rx="2" fill="#9cc6e8" class="monitor-glow"/>`;
+  s += `<rect x="210" y="459" width="26" height="15" rx="2" fill="#efe9df" stroke="#d3c9b9" stroke-width=".8"/>`;
+  s += `<rect x="150" y="426" width="80" height="9" rx="2" fill="#3f3a33"/><rect x="153" y="428" width="74" height="5" rx="1" fill="#a7cbe6" class="monitor-glow"/>`;  // CCTV
+  // 매니저 캐릭터
+  s += `<g class="bob"><ellipse cx="186" cy="508" rx="15" ry="5" fill="rgba(80,65,45,.18)"/>
+        <rect x="171" y="488" width="30" height="22" rx="10" fill="#4a4338"/>
+        <rect x="182" y="489" width="8" height="8" rx="2" fill="url(#goldG)"/>
+        <circle cx="186" cy="478" r="13" fill="#ffdcc0"/>
+        <path d="M173 477 Q173 461 186 461 Q199 461 199 477 Q196 469 186 469 Q177 469 173 477Z" fill="#4b362b"/>
+        <g class="blinkeye"><circle cx="181.5" cy="479" r="1.8" fill="#2a2a2a"/><circle cx="190.5" cy="479" r="1.8" fill="#2a2a2a"/></g>
+        <circle cx="178" cy="483" r="2" fill="#f5b7a5" opacity=".7"/><circle cx="194" cy="483" r="2" fill="#f5b7a5" opacity=".7"/>
+        <path d="M182 484 Q186 487.5 190 484" stroke="#c46a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/></g>`;
+  s += `<rect x="160" y="524" width="52" height="15" rx="7.5" fill="#4a4338"/><text x="186" y="535" text-anchor="middle" font-size="9.5" font-weight="800" fill="#e9d9b4" font-family="Pretendard">매니저</text>`;
+  // 업무 폴더 (그레이지 수납장)
+  s += `<rect x="216" y="548" width="38" height="60" rx="3" fill="#d4cabb" stroke="#bdb19e"/>`;
+  [556, 575, 594].forEach(y => s += `<rect x="220" y="${y}" width="30" height="14" rx="2" fill="#e3dbcf"/><rect x="231" y="${y + 5}" width="8" height="3" rx="1.5" fill="#a39885"/>`);
+  // 출입문 + 출결 패드
+  s += `<rect x="9" y="606" width="9" height="62" fill="#cfe3ea"/>`;
+  s += `<path d="M18 612 a50 50 0 0 1 48 48" stroke="#b3a893" stroke-width="2" fill="none" stroke-dasharray="4 4"/>`;
+  s += `<text x="40" y="690" text-anchor="middle" font-size="11" font-weight="800" fill="#8b8174" font-family="Pretendard">출입문</text>`;
+  s += `<rect x="114" y="610" width="12" height="20" rx="2" fill="#f4f1ec" stroke="#bdb19e"/><rect x="116" y="612" width="8" height="12" rx="1" fill="#6f9fd8" class="monitor-glow"/>`;
+  $('map').innerHTML = s;
+  $('lights').innerHTML = '<defs><radialGradient id="lg"><stop offset="0" stop-color="#ffe7b0" stop-opacity=".95"/><stop offset=".35" stop-color="#ffd58a" stop-opacity=".45"/><stop offset="1" stop-color="#ffd58a" stop-opacity="0"/></radialGradient></defs>'
+    + LAMPS.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="17" fill="url(#lg)"/>`).join('')
+    + [[320, 62, 780, 62], [320, 248, 780, 248], [320, 432, 780, 432]].map(([x1, y1, x2, y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff3d6" stroke-width="5" stroke-linecap="round" opacity=".55"/>`).join('')
+    + '<circle cx="186" cy="466" r="46" fill="url(#lg)" opacity=".7"/>';
+}
+
+/* =========================================================
+ *  2) 누르면 열리는 장소
+ * ========================================================= */
+const SPOTS = [
+  { key: 'solo', x: 200, y: 372, icon: '🖥️', tag: '매니저 데스크', cls: 'p-solo' },
+  { key: 'sheets', x: 232, y: 596, icon: '🗂️', tag: '업무 폴더', cls: 'p-sheets' },
+  { key: 'schedule', x: 72, y: 598, icon: '🚪', tag: '입구 안내판', cls: 'p-schedule' },
+  { key: 'consult', x: 553, y: 548, icon: '💬', tag: '스터디룸', cls: 'p-consult' },
+];
+const CARD = {
+  solo: { place: '매니저 데스크', icon: '🖥️', cls: 'p-solo', desc: '좌석 배치, 출결, 이용권, 상벌점, 학습 기록은 모두 솔로스터디에서 관리해요.' },
+  consult: { place: '스터디룸 · 원장님 상담', icon: '💬', cls: 'p-consult', desc: '신규 상담 전화를 기록하고, 원장님 상담 시간 확정과 방문 예약 문자까지 여기서 처리해요.' },
+  schedule: { place: '입구 안내판 · 신규 학생', icon: '🚪', cls: 'p-schedule', desc: '등록 전 학생에게 보내는 등원 스케줄 입력 링크예요. 복사하거나 문자로 바로 보낼 수 있어요.' },
+  sheets: { place: '업무 폴더', icon: '🗂️', cls: 'p-sheets', title: '응답 기록 시트', desc: '앱에서 저장한 기록이 쌓이는 구글 시트예요. 공유받은 구글 계정으로 열려요.' },
+};
+
+function drawSpots() {
+  const box = $('spots'); box.innerHTML = '';
+  SPOTS.forEach(sp => {
+    const b = document.createElement('button');
+    b.className = 'spot'; b.style.left = (sp.x / 800 * 100) + '%'; b.style.top = (sp.y / 700 * 100) + '%';
+    b.innerHTML = `<span class="pin ${sp.cls}">${sp.icon}</span><span class="tag">${esc(sp.tag)}</span>`;
+    b.onclick = () => openCard(sp.key);
+    box.appendChild(b);
+  });
+  const dock = $('dock'); dock.innerHTML = '';
+  [['solo','솔로스터디'],['consult','상담 기록'],['schedule','스케줄 기입표'],['sheets','업무 폴더']].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="ic ${CARD[k].cls}">${CARD[k].icon}</span>${label}`;
+    b.onclick = () => openCard(k);
+    dock.appendChild(b);
+  });
+}
+
+function openCard(k) {
+  const c = CARD[k], a = app(k);
+  const title = c.title || a.title;
+  let h = `<div class="grab"></div><div class="top"><div class="big ${c.cls}">${c.icon}</div><div>
+           <div class="place">${esc(c.place)}</div><h3>${esc(title)}</h3>${a.badge ? `<span class="badge">${esc(a.badge)}</span>` : ''}</div></div>
+           <p class="desc">${esc(c.desc)}</p>`;
+  if (k === 'sheets') {
+    h += '<div class="acts">' + LINKS.sheets.map(s => `<a class="sheetlink" href="${esc(s.url)}" target="_blank" rel="noopener"><span class="ico">📊</span><span><b>${esc(s.title)}</b><small>${esc(s.desc)}</small></span><span class="arr">›</span></a>`).join('') + '</div>';
+  } else if (k === 'schedule') {
+    h += `<div class="acts two"><a class="btn main" href="${esc(a.url)}" target="_blank" rel="noopener">기입표 열어보기</a>
+          <button class="btn sub" id="cpy">링크 복사</button><button class="btn green" id="sms">문자로 보내기</button></div>`;
+  } else {
+    h += `<div class="acts"><a class="btn main" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(title)} 열기</a></div>`;
+    if (k === 'solo') h += '<div class="hint">매장 Wi-Fi에 연결된 기기에서만 열려요.</div>';
+  }
+  $('card').innerHTML = h;
+  if (k === 'schedule') {
+    $('cpy').onclick = () => copy(a.url, '스케줄 기입표 링크를 복사했어요');
+    $('sms').onclick = () => {
+      const msg = '안녕하세요. 쏭스터디랩입니다.\n아래 링크에서 학생 등원 가능 스케줄을 입력해 주세요.\n' + a.url;
+      const sep = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+      const t = document.createElement('a'); t.href = 'sms:' + sep + 'body=' + encodeURIComponent(msg); t.target = '_top';
+      document.body.appendChild(t); t.click(); t.remove();
+    };
+  }
+  $('veil').classList.add('show'); $('card').classList.add('show');
+}
+function closeCard() { $('veil').classList.remove('show'); $('card').classList.remove('show'); }
+$('veil').onclick = closeCard;
+
+/* =========================================================
+ *  3) 시계 · 인사 · 밤 모드
+ * ========================================================= */
+function tick() {
+  const d = new Date(), h = d.getHours();
+  $('time').textContent = String(h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  $('date').textContent = (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일';
+  const g = h < 5 ? '늦은 시간까지 고생 많아요' : h < 12 ? '좋은 아침이에요' : h < 18 ? '좋은 오후예요' : '오늘도 수고 많아요';
+  $('hello').innerHTML = `${g}, <b>매니저님</b>! 가고 싶은 장소를 눌러 보세요.`;
+  $('stage').classList.toggle('night', h >= 18 || h < 6);
+}
+
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200); }
+async function copy(text, done) {
+  try { await navigator.clipboard.writeText(text); return toast(done); } catch (e) {}
+  const c = $('clip'); c.value = text; c.select(); c.setSelectionRange(0, text.length);
+  try { document.execCommand('copy') ? toast(done) : toast('길게 눌러 링크를 복사해 주세요'); } catch (e) { toast('길게 눌러 링크를 복사해 주세요'); }
+}
+
+drawMap(); drawSpots(); tick(); setInterval(tick, 20000);
+
+
+/* =========================================================
+ *  5) 좌석 명단 (비밀번호를 맞게 넣은 뒤에만 서버에서 받아옴)
+ * ========================================================= */
+let ROSTERMAP = {}, showNames = true;
+const digits = v => String(v || '').replace(/[^0-9+]/g, '');
+const smsHref = (num, body) => 'sms:' + digits(num) + (body ? (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?') + 'body=' + encodeURIComponent(body) : '');
+
+function renderRoster() {
+  ROSTERMAP = {};
+  (LINKS.roster || []).forEach(r => ROSTERMAP[r.seat] = r);
+  // 맵 위 표시
+  const old = document.getElementById('rosterLayer'); if (old) old.remove();
+  let g = '<g id="rosterLayer">';
+  Object.keys(SEATBOX).forEach(k => {
+    const n = Number(k), b = SEATBOX[n], r = ROSTERMAP[n];
+    const x1 = Math.min(b.dx, b.cx - 11), y1 = Math.min(b.dy, b.cy - 11), x2 = Math.max(b.dx + b.dw, b.cx + 11), y2 = Math.max(b.dy + b.dh, b.cy + 13);
+    g += `<rect class="rhit" data-seat="${n}" x="${x1 - 2}" y="${y1 - 2}" width="${x2 - x1 + 4}" height="${y2 - y1 + 4}" rx="5"/>`;
+    if (r) {
+      g += `<rect class="rmark" x="${b.dx - 1.5}" y="${b.dy - 1.5}" width="${b.dw + 3}" height="${b.dh + 3}" rx="4" fill="none" stroke="#c6a463" stroke-width="1.6" pointer-events="none"/>`;
+      if (showNames) {
+        const vert = b.dir === 'left' || b.dir === 'right';
+        const nm = String(r.name).slice(0, vert ? 3 : 4), fs = vert ? 7 : 8.5;
+        const tw = Math.min(nm.length * fs + 6, vert ? b.dw + 14 : b.dw + 6), tx = b.dx + b.dw / 2, ty = b.dy + b.dh / 2;
+        g += `<g pointer-events="none"><rect x="${tx - tw / 2}" y="${ty - 7}" width="${tw}" height="13" rx="4" fill="#fffaf0" stroke="#c6a463" stroke-width=".9"/>`
+          + `<text x="${tx}" y="${ty + 2.6}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#5b4a2c" font-family="Pretendard, sans-serif">${esc(nm)}</text></g>`;
+      } else {
+        g += `<circle cx="${b.dx + b.dw - 3}" cy="${b.dy + 3}" r="3" fill="#c6a463" pointer-events="none"/>`;
+      }
+    }
+  });
+  $('map').insertAdjacentHTML('beforeend', g + '</g>');
+  $('map').querySelectorAll('.rhit').forEach(el => el.addEventListener('click', () => openSeat(Number(el.dataset.seat))));
+  drawRosterList();
+}
+
+function drawRosterList() {
+  const list = LINKS.roster || [], q = $('rq').value.trim().replace(/[-\s]/g, '').replace(/번$/, '');
+  $('rcount').textContent = list.length ? list.length + '명' : '';
+  const rows = list.filter(r => !q || String(r.seat) === q || [r.name, r.school, digits(r.studentPhone), digits(r.parentPhone)].join(' ').includes(q));
+  if (!list.length) {
+    $('rlist').innerHTML = `<div class="rempty">${LINKS.rosterError ? '명단을 불러오지 못했어요.<br>' + esc(LINKS.rosterError) : '아직 등록된 학생이 없어요.<br>업무 폴더 → <b>좌석 명단</b> 시트에 적거나, 상담 앱에서 <b>등록 완료 + 좌석 번호</b>로 처리하면 여기에 떠요.'}</div>`;
+    return;
+  }
+  $('rlist').innerHTML = rows.length ? rows.map(r => `<div class="rrow" data-seat="${r.seat}">
+      <span class="no ${OPEN.includes(r.seat) ? '' : 'closed'}">${r.seat}</span>
+      <span class="who"><b>${esc(r.name)}</b><small>${esc([r.school, r.grade].filter(Boolean).join(' · ') || (OPEN.includes(r.seat) ? '개방형' : '몰입형'))}</small></span>
+      <span class="calls"><a href="tel:${digits(r.studentPhone)}" target="_top" class="${r.studentPhone ? '' : 'off'}">학생</a><a href="tel:${digits(r.parentPhone)}" target="_top" class="pg ${r.parentPhone ? '' : 'off'}">보호자</a></span>
+    </div>`).join('') : '<div class="rempty">검색 결과가 없어요.</div>';
+  $('rlist').querySelectorAll('.rrow').forEach(el => el.addEventListener('click', e => { if (!e.target.closest('a')) openSeat(Number(el.dataset.seat)); }));
+}
+
+function openSeat(n) {
+  const r = ROSTERMAP[n], type = OPEN.includes(n) ? '개방형' : '몰입형';
+  const rosterLink = (LINKS.sheets || []).find(x => x.key === 'rosterSheet');
+  const mark = $('map').querySelectorAll('.rmark'); mark.forEach(m => m.classList.remove('flash'));
+  const contact = (label, num) => `<div class="contact"><div class="lab"><small>${esc(label)}</small>${num ? `<b>${esc(num)}</b>` : '<span class="none">번호 없음 · 좌석 명단 시트에 적어 주세요</span>'}</div>`
+    + (num ? `<a class="call" href="tel:${digits(num)}" target="_top">전화</a><a class="text" href="${smsHref(num)}" target="_top">문자</a>` : '') + '</div>';
+  let h = `<div class="grab"></div><div class="top"><div class="big p-consult" style="font-size:22px;font-weight:800;color:#fff">${n}</div><div>
+           <div class="place">좌석 ${n}번 · ${type}</div><h3>${r ? esc(r.name) : '빈 자리'}</h3>${r && (r.school || r.grade) ? `<span class="badge">${esc([r.school, r.grade].filter(Boolean).join(' · '))}</span>` : ''}</div></div>`;
+  if (r) {
+    h += `<div class="acts">${contact('학생 연락처', r.studentPhone)}${contact('보호자 연락처' + (r.guardian ? ' · ' + r.guardian : ''), r.parentPhone)}</div>`;
+    if (r.memo) h += `<div class="memo">${esc(r.memo)}</div>`;
+    if (r.from === 'consult') h += '<div class="hint">상담 기록에서 불러온 정보예요. 학생 번호는 좌석 명단 시트에 적어 주세요.</div>';
+  } else {
+    h += '<p class="desc">이 자리에 등록된 학생이 없어요. 좌석 명단 시트에 적거나, 상담 앱에서 등록 완료 + 좌석 번호로 처리하면 나타나요.</p>';
+  }
+  if (rosterLink) h += `<div class="acts"><a class="btn sub" href="${esc(rosterLink.url)}" target="_blank" rel="noopener">좌석 명단 시트 열기</a></div>`;
+  $('card').innerHTML = h;
+  $('veil').classList.add('show'); $('card').classList.add('show');
+}
+
+$('rq').addEventListener('input', drawRosterList);
+$('rnames').onclick = () => { showNames = !showNames; $('rnames').classList.toggle('on', showNames); renderRoster(); };
+function clearRoster() { LINKS.roster = []; const old = document.getElementById('rosterLayer'); if (old) old.remove(); $('rq').value = ''; $('rlist').innerHTML = ''; $('rcount').textContent = ''; }
+
+/* =========================================================
+ *  4) 비밀번호 잠금
+ * ========================================================= */
+$('glogo').innerHTML = document.querySelector('.logo').innerHTML;
+const KEY = 'ssl_hub_pin';
+const store = { get() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } },
+  set(v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} } };
+
+// ▼▼▼ 업무 통합앱(Apps Script) 웹 앱 주소를 따옴표 안에 넣어 주세요 ▼▼▼
+const API_URL = 'https://script.google.com/macros/s/AKfycbzOiGexr7hcMKIYjF2OSwBWcYWMx72teSrTlxYk2b8BuR3FoE7D-6wGXFPGwuUXO7H8xg/exec';
+// ▲▲▲ 예: 'https://script.google.com/macros/s/AKfy.../exec' ▲▲▲
+
+function fetchLinks(pin) {
+  if (location.protocol === 'file:' && window.__PREVIEW_LINKS__) // 미리보기용
+    return pin === '0000' ? Promise.resolve(window.__PREVIEW_LINKS__) : Promise.reject(new Error('비밀번호가 맞지 않아요.'));
+  if (!API_URL) return Promise.reject(new Error('앱 설정이 덜 됐어요. (API 주소 비어 있음)'));
+  return fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ pin }) })
+    .then(r => r.json())
+    .catch(() => { throw new Error('서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'); })
+    .then(j => { if (!j || !j.ok) throw new Error((j && j.error) || '비밀번호가 맞지 않아요.'); return j.data; });
+}
+async function unlock(pin, silent) {
+  $('gbtn').disabled = true; $('gbtn').textContent = '확인 중…'; $('gerr').textContent = '';
+  try {
+    LINKS = await fetchLinks(pin);
+    renderRoster();
+    if ($('gkeep').checked || silent) store.set(pin);
+    $('gate').classList.add('hide');
+  } catch (e) {
+    store.set('');
+    if (!silent) { $('gerr').textContent = (e && e.message) || '비밀번호가 맞지 않아요.'; const i = $('gpin'); i.classList.remove('shake'); void i.offsetWidth; i.classList.add('shake'); i.select(); }
+  }
+  $('gbtn').disabled = false; $('gbtn').textContent = '들어가기';
+}
+$('gform').onsubmit = e => { e.preventDefault(); const p = $('gpin').value.trim(); if (!p) { $('gerr').textContent = '비밀번호를 입력해 주세요.'; return; } unlock(p); };
+$('lock').onclick = () => { store.set(''); clearRoster(); LINKS = { apps: [], sheets: [] }; closeCard(); $('gpin').value = ''; $('gate').classList.remove('hide'); };
+const saved = store.get();
+if (saved) unlock(saved, true); else setTimeout(() => $('gpin').focus(), 300);
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
